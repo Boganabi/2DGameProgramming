@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
+using UnityEngine.SceneManagement;
 
 public class SceneController : MonoBehaviour
 {
@@ -9,8 +11,34 @@ public class SceneController : MonoBehaviour
     public const float offsetX = 2f;
     public const float offsetY = 2.5f;
 
+    private int score = 0;
+
+    private MemoryCard firstRevealed;
+    private MemoryCard secondRevealed;
+
+    [SerializeField] TMP_Text scoreLabel;
+
     [SerializeField] MemoryCard originalCard;
     [SerializeField] Sprite[] images;
+
+    public bool canReveal
+    {
+        get { return secondRevealed == null; }
+    }
+
+    public void CardRevealed(MemoryCard card)
+    {
+        if(firstRevealed == null)
+        {
+            firstRevealed = card;
+        }
+        else
+        {
+            secondRevealed = card;
+            // Debug.Log("Match? " + (firstRevealed.Id == secondRevealed.Id));
+            StartCoroutine(CheckMatch());
+        }
+    }
 
     // Start is called before the first frame update
     void Start()
@@ -19,6 +47,10 @@ public class SceneController : MonoBehaviour
         //originalCard.SetCard(id, images[id]);
 
         Vector3 startPos = originalCard.transform.position;
+
+        // you may want to refactor this to be scalable so you can add more cards
+        int[] numbers = { 0, 0, 1, 1, 2, 2, 3, 3 };
+        numbers = ShuffleArray(numbers);
 
         for(int i = 0; i < gridCols; i++)
         {
@@ -35,7 +67,9 @@ public class SceneController : MonoBehaviour
                     card = Instantiate(originalCard) as MemoryCard;
                 }
 
-                int id = Random.Range(0, images.Length);
+                int index = j * gridCols + i;
+                // int id = Random.Range(0, images.Length);
+                int id = numbers[index];
                 card.SetCard(id, images[id]);
 
                 float posX = (offsetX * i) + startPos.x;
@@ -50,4 +84,43 @@ public class SceneController : MonoBehaviour
     //{
         
     //}
+    
+    // method to shuffle an array of numbers
+    // implementation of the Knuth shuffle algorithm
+    private int[] ShuffleArray(int[] numbers)
+    {
+        int[] newArray = numbers.Clone() as int[];
+        for(int i = 0; i < newArray.Length; i++)
+        {
+            int temp = newArray[i];
+            int rand = Random.Range(i, newArray.Length);
+            newArray[i] = newArray[rand];
+            newArray[rand] = temp;
+        }
+        return newArray;
+    }
+
+    private IEnumerator CheckMatch()
+    {
+        if(firstRevealed.Id == secondRevealed.Id)
+        {
+            score++;
+            // Debug.Log($"Score: {score}");
+            scoreLabel.text = $"Score: {score}";
+        }
+        else
+        {
+            yield return new WaitForSeconds(0.5f);
+            firstRevealed.Unreveal();
+            secondRevealed.Unreveal();
+        }
+
+        firstRevealed = null;
+        secondRevealed = null;
+    }
+
+    public void Restart()
+    {
+        SceneManager.LoadScene("SampleScene"); // make sure name of your scene matches
+    }
 }
